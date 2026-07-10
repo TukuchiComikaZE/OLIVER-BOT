@@ -5,6 +5,8 @@ const { getKhmerTTS } = require('./tts');
 const play = require('play-dl');
 const { spotify } = require('spotify-url-info');
 
+play.setToken({ youtube: { cookie: true } });
+
 const client = new Client({
   intents: [
     GatewayIntentBits.Guilds,
@@ -319,20 +321,28 @@ client.on('messageCreate', async (message) => {
         songTitle = `${data.name} - ${data.artists?.[0]?.name || ''}`;
         songThumb = data.coverArt?.sources?.[0]?.url || search[0].thumbnails?.[0]?.url;
       } else {
-        const search = await play.search(query, { limit: 1 });
-        if (!search.length) {
-          const errEmbed = new EmbedBuilder()
-            .setColor(0xed4245)
-            .setTitle('# ⛔ ERROR')
-            .setDescription('## No results found!')
-            .setThumbnail('https://i.imgur.com/Yl2kAx0.png')
-            .setImage('https://i.imgur.com/Yl2kAx0.png')
-            .setFooter({ text: 'OLIVER BOT • DEV BY CHI D', iconURL: 'https://i.imgur.com/WInF5AF.png' });
-          return message.reply({ embeds: [errEmbed] });
+        const isDirectLink = query.match(/https?:\/\/(www\.)?(youtube\.com|youtu\.be)/);
+        if (isDirectLink) {
+          const info = await play.video_info(query);
+          songUrl = query;
+          songTitle = info.video_details.title;
+          songThumb = info.video_details.thumbnails[0]?.url;
+        } else {
+          const search = await play.search(query, { limit: 1 });
+          if (!search.length) {
+            const errEmbed = new EmbedBuilder()
+              .setColor(0xed4245)
+              .setTitle('# ⛔ ERROR')
+              .setDescription('## No results found!')
+              .setThumbnail('https://i.imgur.com/Yl2kAx0.png')
+              .setImage('https://i.imgur.com/Yl2kAx0.png')
+              .setFooter({ text: 'OLIVER BOT • DEV BY CHI D', iconURL: 'https://i.imgur.com/WInF5AF.png' });
+            return message.reply({ embeds: [errEmbed] });
+          }
+          songUrl = search[0].url;
+          songTitle = search[0].title;
+          songThumb = search[0].thumbnails[0]?.url;
         }
-        songUrl = search[0].url;
-        songTitle = search[0].title;
-        songThumb = search[0].thumbnails[0]?.url;
       }
 
       const stream = await play.stream(songUrl);

@@ -20,6 +20,7 @@ client.once('ready', (c) => {
 });
 
 const VOICES = ['sreymom', 'piseth'];
+const players = new Map();
 let persistentGuildId = null;
 let persistentChannelId = null;
 let persistentAdapterCreator = null;
@@ -53,12 +54,14 @@ async function playTTS(connection, text) {
     const resource = createAudioResource(stream);
     connection.subscribe(player);
     player.play(resource);
+    players.set(connection.joinConfig.guildId, player);
 
     return new Promise((resolve) => {
       player.on(AudioPlayerStatus.Playing, () => console.log('Audio is playing'));
-      player.on(AudioPlayerStatus.Idle, () => { console.log('Audio finished'); resolve(); });
+      player.on(AudioPlayerStatus.Idle, () => { console.log('Audio finished'); players.delete(connection.joinConfig.guildId); resolve(); });
       player.on('error', (err) => {
         console.error('Player error:', err.message);
+        players.delete(connection.joinConfig.guildId);
         resolve();
       });
     });
@@ -160,10 +163,38 @@ client.on('messageCreate', async (message) => {
         { name: '**`/jol`**', value: '➜ Join your current voice channel', inline: false },
         { name: '**`/jenh`**', value: '➜ Leave the voice channel', inline: false },
         { name: '**`/niyey [text]`**', value: '➜ Make the bot speak your text', inline: false },
+        { name: '**`/chopniyey`**', value: '➜ Cut the bot\'s current speech', inline: false },
         { name: '**`/cmd`**', value: '➜ Show this command list', inline: false },
       )
       .setFooter({ text: 'OLIVER BOT • DEV BY CHI D', iconURL: 'https://i.imgur.com/WInF5AF.png' });
     return message.reply({ embeds: [cmdEmbed] });
+  }
+
+  if (args[0] === '/chopniyey' || args[0] === '/chop') {
+    const connection = getVoiceConnection(message.guild.id);
+    if (!connection) {
+      const errEmbed = new EmbedBuilder()
+        .setColor(0xed4245)
+        .setTitle('# ⛔ ERROR')
+        .setDescription('## Bot is not connected to voice.')
+        .setThumbnail('https://i.imgur.com/Yl2kAx0.png')
+        .setImage('https://i.imgur.com/Yl2kAx0.png')
+        .setFooter({ text: 'OLIVER BOT • DEV BY CHI D', iconURL: 'https://i.imgur.com/WInF5AF.png' });
+      return message.reply({ embeds: [errEmbed] });
+    }
+    const player = players.get(message.guild.id);
+    if (player) {
+      player.stop();
+      players.delete(message.guild.id);
+    }
+    const chopEmbed = new EmbedBuilder()
+      .setColor(0xffa500)
+      .setTitle('# ✂️ CHOPPED')
+      .setDescription('## Audio cut successfully!')
+      .setThumbnail('https://i.imgur.com/Yl2kAx0.png')
+      .setImage('https://i.imgur.com/Yl2kAx0.png')
+      .setFooter({ text: 'OLIVER BOT • DEV BY CHI D', iconURL: 'https://i.imgur.com/WInF5AF.png' });
+    return message.reply({ embeds: [chopEmbed] });
   }
 
   if ((args[0] === '/niyey' || args[0] === '/say') && args[1]) {

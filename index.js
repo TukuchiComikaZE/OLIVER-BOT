@@ -22,25 +22,23 @@ const VOICES = ['sreymom', 'piseth'];
 let persistentGuildId = null;
 let persistentChannelId = null;
 let persistentAdapterCreator = null;
+let forceLeave = false;
 
 function setupAutoReconnect(connection) {
   connection.on(VoiceConnectionStatus.Disconnected, async () => {
     await new Promise(r => setTimeout(r, 2000));
-    if (!persistentGuildId) return;
-    const botChannel = client.guilds.cache.get(persistentGuildId)?.members.me?.voice?.channelId;
-    if (botChannel === persistentChannelId) {
-      console.log('Network issue, reconnecting...');
-      try {
-        const newConn = joinVoiceChannel({
-          channelId: persistentChannelId,
-          guildId: persistentGuildId,
-          adapterCreator: persistentAdapterCreator,
-          selfDeaf: false,
-        });
-        setupAutoReconnect(newConn);
-      } catch (e) {
-        console.error('Reconnect failed:', e.message);
-      }
+    if (!persistentGuildId || forceLeave) return;
+    console.log('Reconnecting...');
+    try {
+      const newConn = joinVoiceChannel({
+        channelId: persistentChannelId,
+        guildId: persistentGuildId,
+        adapterCreator: persistentAdapterCreator,
+        selfDeaf: false,
+      });
+      setupAutoReconnect(newConn);
+    } catch (e) {
+      console.error('Reconnect failed:', e.message);
     }
   });
 }
@@ -100,6 +98,7 @@ client.on('messageCreate', async (message) => {
       persistentGuildId = message.guild.id;
       persistentChannelId = voiceChannel.id;
       persistentAdapterCreator = message.guild.voiceAdapterCreator;
+      forceLeave = false;
 
       setupAutoReconnect(connection);
 
@@ -138,6 +137,7 @@ client.on('messageCreate', async (message) => {
       return message.reply({ embeds: [errEmbed] });
     }
 
+    forceLeave = true;
     persistentGuildId = null;
     persistentChannelId = null;
     persistentAdapterCreator = null;

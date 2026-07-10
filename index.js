@@ -24,6 +24,7 @@ client.once('ready', (c) => {
 const VOICES = ['sreymom', 'piseth'];
 const musicPlayers = new Map();
 const ttsPlayers = new Map();
+const currentSongTitle = new Map();
 let persistentGuildId = null;
 let persistentChannelId = null;
 let persistentAdapterCreator = null;
@@ -167,8 +168,9 @@ client.on('messageCreate', async (message) => {
         { name: '**`/jenh`**', value: '➜ Leave the voice channel', inline: false },
         { name: '**`/niyey [text]`**', value: '➜ Make the bot speak your text', inline: false },
         { name: '**`/chopniyey`**', value: '➜ Cut the bot\'s current speech', inline: false },
-        { name: '**`/jak [song]`**', value: '➜ Play a song from YouTube', inline: false },
+        { name: '**`/jak [song]`**', value: '➜ Play a song from YouTube/Spotify', inline: false },
         { name: '**`/bit`**', value: '➜ Stop the current song', inline: false },
+        { name: '**`/lyric`**', value: '➜ Show lyrics of current song', inline: false },
         { name: '**`/cmd`**', value: '➜ Show this command list', inline: false },
         { name: '**🔗 Invite Bot**', value: '[Click here to invite OLIVER BOT](https://discord.com/oauth2/authorize?client_id=1524671957394784330&permissions=8&integration_type=0&scope=bot)', inline: false },
       )
@@ -203,11 +205,52 @@ client.on('messageCreate', async (message) => {
     return message.reply({ embeds: [chopEmbed] });
   }
 
+  if (args[0] === '/lyric') {
+    const title = currentSongTitle.get(message.guild.id);
+    if (!title) {
+      const errEmbed = new EmbedBuilder()
+        .setColor(0xed4245)
+        .setTitle('# ⛔ ERROR')
+        .setDescription('## No song is currently playing.')
+        .setThumbnail('https://i.imgur.com/Yl2kAx0.png')
+        .setImage('https://i.imgur.com/Yl2kAx0.png')
+        .setFooter({ text: 'OLIVER BOT • DEV BY CHI D', iconURL: 'https://i.imgur.com/WInF5AF.png' });
+      return message.reply({ embeds: [errEmbed] });
+    }
+    const songTitle = title;
+    const parts = songTitle.split(' - ');
+    const artist = parts.length > 1 ? parts[1].trim() : '';
+    const songName = parts[0].trim();
+    try {
+      const res = await fetch(`https://api.lyrics.ovh/v1/${encodeURIComponent(artist)}/${encodeURIComponent(songName)}`);
+      const data = await res.json();
+      if (!data.lyrics) throw new Error('No lyrics');
+      const lyricEmbed = new EmbedBuilder()
+        .setColor(0x5865f2)
+        .setTitle('# 📜 LYRICS')
+        .setDescription(`## ${songTitle}\n\`\`\`${data.lyrics.substring(0, 4000)}\`\`\``)
+        .setThumbnail('https://i.imgur.com/Yl2kAx0.png')
+        .setImage('https://i.imgur.com/Yl2kAx0.png')
+        .setFooter({ text: 'OLIVER BOT • DEV BY CHI D', iconURL: 'https://i.imgur.com/WInF5AF.png' });
+      message.reply({ embeds: [lyricEmbed] });
+    } catch {
+      const errEmbed = new EmbedBuilder()
+        .setColor(0xed4245)
+        .setTitle('# ⛔ ERROR')
+        .setDescription('## Could not find lyrics for this song.')
+        .setThumbnail('https://i.imgur.com/Yl2kAx0.png')
+        .setImage('https://i.imgur.com/Yl2kAx0.png')
+        .setFooter({ text: 'OLIVER BOT • DEV BY CHI D', iconURL: 'https://i.imgur.com/WInF5AF.png' });
+      message.reply({ embeds: [errEmbed] });
+    }
+  }
+
   if (args[0] === '/bit' || args[0] === '/stop') {
     const player = musicPlayers.get(message.guild.id);
     if (player) {
       player.stop();
       musicPlayers.delete(message.guild.id);
+      currentSongTitle.delete(message.guild.id);
     }
     const stopEmbed = new EmbedBuilder()
       .setColor(0xed4245)
@@ -298,6 +341,7 @@ client.on('messageCreate', async (message) => {
       connection.subscribe(player);
       player.play(resource);
       musicPlayers.set(message.guild.id, player);
+      currentSongTitle.set(message.guild.id, songTitle);
       const playEmbed = new EmbedBuilder()
         .setColor(0x57f287)
         .setTitle('# 🎵 NOW PLAYING')

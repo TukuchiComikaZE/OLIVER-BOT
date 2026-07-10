@@ -166,8 +166,8 @@ client.on('messageCreate', async (message) => {
         { name: '**`/jenh`**', value: '➜ Leave the voice channel', inline: false },
         { name: '**`/niyey [text]`**', value: '➜ Make the bot speak your text', inline: false },
         { name: '**`/chopniyey`**', value: '➜ Cut the bot\'s current speech', inline: false },
-        { name: '**`/plaeng [song]`**', value: '➜ Play a song from YouTube', inline: false },
-        { name: '**`/stop`**', value: '➜ Stop the current song', inline: false },
+        { name: '**`/jak [song]`**', value: '➜ Play a song from YouTube', inline: false },
+        { name: '**`/bit`**', value: '➜ Stop the current song', inline: false },
         { name: '**`/cmd`**', value: '➜ Show this command list', inline: false },
         { name: '**🔗 Invite Bot**', value: '[Click here to invite OLIVER BOT](https://discord.com/oauth2/authorize?client_id=1524671957394784330&permissions=8&integration_type=0&scope=bot)', inline: false },
       )
@@ -202,7 +202,7 @@ client.on('messageCreate', async (message) => {
     return message.reply({ embeds: [chopEmbed] });
   }
 
-  if (args[0] === '/stop') {
+  if (args[0] === '/bit' || args[0] === '/stop') {
     const player = musicPlayers.get(message.guild.id);
     if (player) {
       player.stop();
@@ -218,7 +218,7 @@ client.on('messageCreate', async (message) => {
     return message.reply({ embeds: [stopEmbed] });
   }
 
-  if (args[0] === '/plaeng') {
+  if (args[0] === '/jak' || args[0] === '/plaeng') {
     if (!args[1]) {
       const errEmbed = new EmbedBuilder()
         .setColor(0xed4245)

@@ -16,6 +16,7 @@ process.on('unhandledRejection', (err) => console.error('Unhandled:', err));
 
 client.once('ready', (c) => {
   console.log(`Logged in as ${c.user.tag}`);
+  setupKeepAlive();
 });
 
 const VOICES = ['sreymom', 'piseth'];
@@ -25,26 +26,20 @@ let persistentAdapterCreator = null;
 let forceLeave = false;
 let wasKicked = false;
 
-function setupAutoReconnect(connection) {
-  connection.on(VoiceConnectionStatus.Disconnected, async () => {
-    await new Promise(r => setTimeout(r, 2000));
-    if (!persistentGuildId || forceLeave || wasKicked) {
-      wasKicked = false;
-      return;
-    }
-    console.log('Reconnecting...');
-    try {
-      const newConn = joinVoiceChannel({
+function setupKeepAlive() {
+  setInterval(() => {
+    if (!persistentGuildId || forceLeave) return;
+    const conn = getVoiceConnection(persistentGuildId);
+    if (!conn || conn.state.status === VoiceConnectionStatus.Disconnected || conn.state.status === VoiceConnectionStatus.Destroyed) {
+      console.log('Keep-alive reconnecting...');
+      joinVoiceChannel({
         channelId: persistentChannelId,
         guildId: persistentGuildId,
         adapterCreator: persistentAdapterCreator,
         selfDeaf: false,
       });
-      setupAutoReconnect(newConn);
-    } catch (e) {
-      console.error('Reconnect failed:', e.message);
     }
-  });
+  }, 30000);
 }
 
 async function playTTS(connection, text) {
@@ -103,8 +98,6 @@ client.on('messageCreate', async (message) => {
       persistentChannelId = voiceChannel.id;
       persistentAdapterCreator = message.guild.voiceAdapterCreator;
       forceLeave = false;
-
-      setupAutoReconnect(connection);
 
       await playTTS(connection, `សួស្តីបង ${message.member.displayName}`);
       const joinEmbed = new EmbedBuilder()

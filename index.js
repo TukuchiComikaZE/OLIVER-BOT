@@ -1,0 +1,216 @@
+require('dotenv').config();
+const { Client, GatewayIntentBits, EmbedBuilder } = require('discord.js');
+const { joinVoiceChannel, getVoiceConnection, createAudioPlayer, createAudioResource, AudioPlayerStatus, VoiceConnectionStatus } = require('@discordjs/voice');
+const { getKhmerTTS } = require('./tts');
+
+const client = new Client({
+  intents: [
+    GatewayIntentBits.Guilds,
+    GatewayIntentBits.GuildMessages,
+    GatewayIntentBits.GuildVoiceStates,
+    GatewayIntentBits.MessageContent,
+  ],
+});
+
+process.on('unhandledRejection', (err) => console.error('Unhandled:', err));
+
+client.once('ready', (c) => {
+  console.log(`Logged in as ${c.user.tag}`);
+});
+
+const VOICES = ['sreymom', 'piseth'];
+let persistentGuildId = null;
+let persistentChannelId = null;
+let persistentAdapterCreator = null;
+
+function setupAutoReconnect(connection) {
+  connection.on(VoiceConnectionStatus.Disconnected, async () => {
+    await new Promise(r => setTimeout(r, 2000));
+    if (!persistentGuildId) return;
+    const botChannel = client.guilds.cache.get(persistentGuildId)?.members.me?.voice?.channelId;
+    if (botChannel === persistentChannelId) {
+      console.log('Network issue, reconnecting...');
+      try {
+        const newConn = joinVoiceChannel({
+          channelId: persistentChannelId,
+          guildId: persistentGuildId,
+          adapterCreator: persistentAdapterCreator,
+          selfDeaf: false,
+        });
+        setupAutoReconnect(newConn);
+      } catch (e) {
+        console.error('Reconnect failed:', e.message);
+      }
+    }
+  });
+}
+
+async function playTTS(connection, text) {
+  const voice = VOICES[Math.floor(Math.random() * VOICES.length)];
+  try {
+    console.log(`Generating TTS: "${text.substring(0, 30)}..."`);
+    const stream = await getKhmerTTS(text, voice);
+    console.log('TTS audio received, playing...');
+
+    const player = createAudioPlayer();
+    const resource = createAudioResource(stream);
+    connection.subscribe(player);
+    player.play(resource);
+
+    return new Promise((resolve) => {
+      player.on(AudioPlayerStatus.Playing, () => console.log('Audio is playing'));
+      player.on(AudioPlayerStatus.Idle, () => { console.log('Audio finished'); resolve(); });
+      player.on('error', (err) => {
+        console.error('Player error:', err.message);
+        resolve();
+      });
+    });
+  } catch (err) {
+    console.error('TTS error:', err.message);
+  }
+}
+
+client.on('messageCreate', async (message) => {
+  if (message.author.bot) return;
+
+  const content = message.content.toLowerCase();
+  const args = content.split(/\s+/);
+
+  if (args[0] === '/jol') {
+    const voiceChannel = message.member.voice.channel;
+    if (!voiceChannel) {
+      const errEmbed = new EmbedBuilder()
+        .setColor(0xed4245)
+        .setTitle('# ⛔ ERROR')
+        .setDescription('## You must be in a **voice channel**\n>>> Use this command while connected to a voice channel.')
+        .setThumbnail('https://i.imgur.com/Yl2kAx0.png')
+        .setImage('https://i.imgur.com/Yl2kAx0.png')
+        .setFooter({ text: 'OLIVER BOT • DEV BY CHI D', iconURL: 'https://i.imgur.com/WInF5AF.png' });
+      return message.reply({ embeds: [errEmbed] });
+    }
+
+    try {
+      const connection = joinVoiceChannel({
+        channelId: voiceChannel.id,
+        guildId: message.guild.id,
+        adapterCreator: message.guild.voiceAdapterCreator,
+        selfDeaf: false,
+      });
+
+      persistentGuildId = message.guild.id;
+      persistentChannelId = voiceChannel.id;
+      persistentAdapterCreator = message.guild.voiceAdapterCreator;
+
+      setupAutoReconnect(connection);
+
+      await playTTS(connection, `សួស្តីបង ${message.member.displayName}`);
+      const joinEmbed = new EmbedBuilder()
+        .setColor(0x57f287)
+        .setTitle('# 🔊 CONNECTED')
+        .setDescription(`## Successfully joined **${voiceChannel.name}**\n>>> Say **/niyey** to make me speak!`)
+        .setThumbnail('https://i.imgur.com/Yl2kAx0.png')
+        .setImage('https://i.imgur.com/Yl2kAx0.png')
+        .setFooter({ text: 'OLIVER BOT • DEV BY CHI D', iconURL: 'https://i.imgur.com/WInF5AF.png' });
+      message.reply({ embeds: [joinEmbed] });
+    } catch (err) {
+      console.error('Join error:', err.message);
+      const errEmbed = new EmbedBuilder()
+        .setColor(0xed4245)
+        .setTitle('# ❌ FAILED')
+        .setDescription('## Unable to join the voice channel\n>>> Please check permissions and try again.')
+        .setThumbnail('https://i.imgur.com/Yl2kAx0.png')
+        .setImage('https://i.imgur.com/Yl2kAx0.png')
+        .setFooter({ text: 'OLIVER BOT • DEV BY CHI D', iconURL: 'https://i.imgur.com/WInF5AF.png' });
+      message.reply({ embeds: [errEmbed] });
+    }
+  }
+
+  if (args[0] === '/jenh') {
+    const connection = getVoiceConnection(message.guild.id);
+    if (!connection) {
+      const errEmbed = new EmbedBuilder()
+        .setColor(0xed4245)
+        .setTitle('# ⛔ ERROR')
+        .setDescription('## Bot is not connected\n>>> Use **/jol** to make me join first.')
+        .setThumbnail('https://i.imgur.com/Yl2kAx0.png')
+        .setImage('https://i.imgur.com/Yl2kAx0.png')
+        .setFooter({ text: 'OLIVER BOT • DEV BY CHI D', iconURL: 'https://i.imgur.com/WInF5AF.png' });
+      return message.reply({ embeds: [errEmbed] });
+    }
+
+    persistentGuildId = null;
+    persistentChannelId = null;
+    persistentAdapterCreator = null;
+    connection.destroy();
+    const leaveEmbed = new EmbedBuilder()
+      .setColor(0xed4245)
+      .setTitle('# 👋 DISCONNECTED')
+      .setDescription('## Successfully left the voice channel\n>>> See you next time!')
+      .setThumbnail('https://i.imgur.com/Yl2kAx0.png')
+      .setImage('https://i.imgur.com/Yl2kAx0.png')
+      .setFooter({ text: 'OLIVER BOT • DEV BY CHI D', iconURL: 'https://i.imgur.com/WInF5AF.png' });
+    message.reply({ embeds: [leaveEmbed] });
+  }
+
+  if (args[0] === '/cmd') {
+    const cmdEmbed = new EmbedBuilder()
+      .setColor(0x5865f2)
+      .setTitle('# 📋 COMMANDS')
+      .setDescription('## All available commands for **OLIVER BOT**')
+      .setThumbnail('https://i.imgur.com/Yl2kAx0.png')
+      .setImage('https://i.imgur.com/Yl2kAx0.png')
+      .addFields(
+        { name: '**`/jol`**', value: '➜ Join your current voice channel', inline: false },
+        { name: '**`/jenh`**', value: '➜ Leave the voice channel', inline: false },
+        { name: '**`/niyey [text]`**', value: '➜ Make the bot speak your text', inline: false },
+        { name: '**`/cmd`**', value: '➜ Show this command list', inline: false },
+      )
+      .setFooter({ text: 'OLIVER BOT • DEV BY CHI D', iconURL: 'https://i.imgur.com/WInF5AF.png' });
+    return message.reply({ embeds: [cmdEmbed] });
+  }
+
+  if ((args[0] === '/niyey' || args[0] === '/say') && args[1]) {
+    const connection = getVoiceConnection(message.guild.id);
+    if (!connection) {
+      const errEmbed = new EmbedBuilder()
+        .setColor(0xed4245)
+        .setTitle('# ⛔ ERROR')
+        .setDescription('## Bot is not connected\n>>> Use **/jol** to make me join first.')
+        .setThumbnail('https://i.imgur.com/Yl2kAx0.png')
+        .setImage('https://i.imgur.com/Yl2kAx0.png')
+        .setFooter({ text: 'OLIVER BOT • DEV BY CHI D', iconURL: 'https://i.imgur.com/WInF5AF.png' });
+      return message.reply({ embeds: [errEmbed] });
+    }
+
+    const match = message.content.match(/^\/(?:niyey|say)\s+(.+)/i);
+    const text = match ? match[1] : args.slice(1).join(' ');
+    await playTTS(connection, text);
+    const sayEmbed = new EmbedBuilder()
+      .setColor(0x57f287)
+      .setTitle('# 🗣️ SPEAKING')
+      .setDescription(`## ${text}`)
+      .setThumbnail('https://i.imgur.com/Yl2kAx0.png')
+      .setImage('https://i.imgur.com/Yl2kAx0.png')
+      .setFooter({ text: 'OLIVER BOT • DEV BY CHI D', iconURL: 'https://i.imgur.com/WInF5AF.png' });
+    message.reply({ embeds: [sayEmbed] });
+  }
+
+
+});
+
+client.on('voiceStateUpdate', async (oldState, newState) => {
+  if (!persistentChannelId) return;
+  if (newState.member.user.bot) return;
+
+  const joinedBotChannel = newState.channelId === persistentChannelId && oldState.channelId !== persistentChannelId;
+  if (!joinedBotChannel) return;
+
+  const connection = getVoiceConnection(newState.guild.id);
+  if (!connection) return;
+
+  await playTTS(connection, `សួស្តីបង ${newState.member.displayName}`);
+});
+
+client.login(process.env.DISCORD_TOKEN).catch(err => {
+  console.error('Login failed:', err.message);
+});

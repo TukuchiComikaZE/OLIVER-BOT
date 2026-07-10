@@ -23,11 +23,15 @@ let persistentGuildId = null;
 let persistentChannelId = null;
 let persistentAdapterCreator = null;
 let forceLeave = false;
+let wasKicked = false;
 
 function setupAutoReconnect(connection) {
   connection.on(VoiceConnectionStatus.Disconnected, async () => {
     await new Promise(r => setTimeout(r, 2000));
-    if (!persistentGuildId || forceLeave) return;
+    if (!persistentGuildId || forceLeave || wasKicked) {
+      wasKicked = false;
+      return;
+    }
     console.log('Reconnecting...');
     try {
       const newConn = joinVoiceChannel({
@@ -199,8 +203,14 @@ client.on('messageCreate', async (message) => {
 });
 
 client.on('voiceStateUpdate', async (oldState, newState) => {
+  if (newState.member.id === client.user.id) {
+    if (oldState.channelId === persistentChannelId && !newState.channelId && !forceLeave) {
+      wasKicked = true;
+    }
+    return;
+  }
+
   if (!persistentChannelId) return;
-  if (newState.member.user.bot) return;
 
   const joinedBotChannel = newState.channelId === persistentChannelId && oldState.channelId !== persistentChannelId;
   if (!joinedBotChannel) return;

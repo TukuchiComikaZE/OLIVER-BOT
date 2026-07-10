@@ -206,6 +206,15 @@ client.on('voiceStateUpdate', async (oldState, newState) => {
   if (newState.member.id === client.user.id) {
     if (newState.channelId && newState.channelId !== oldState.channelId) {
       persistentChannelId = newState.channelId;
+      const oldConn = getVoiceConnection(newState.guild.id);
+      if (oldConn) oldConn.destroy();
+      const newConn = joinVoiceChannel({
+        channelId: newState.channelId,
+        guildId: newState.guild.id,
+        adapterCreator: newState.guild.voiceAdapterCreator,
+        selfDeaf: false,
+      });
+      setupAutoReconnect(newConn);
       return;
     }
     if (!newState.channelId && !forceLeave) {

@@ -208,13 +208,13 @@ client.on('voiceStateUpdate', async (oldState, newState) => {
       persistentChannelId = newState.channelId;
       persistentAdapterCreator = newState.guild.voiceAdapterCreator;
       const oldConn = getVoiceConnection(newState.guild.id);
-      if (oldConn) oldConn.destroy();
       joinVoiceChannel({
         channelId: newState.channelId,
         guildId: newState.guild.id,
         adapterCreator: newState.guild.voiceAdapterCreator,
         selfDeaf: false,
       });
+      if (oldConn) oldConn.destroy();
       return;
     }
     if (!newState.channelId && !forceLeave) {

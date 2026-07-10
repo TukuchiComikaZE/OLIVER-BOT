@@ -7,7 +7,8 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
   python3-pip \
   && rm -rf /var/lib/apt/lists/*
 
-RUN pip3 install edge-tts --break-system-packages
+ENV PIP_REQUIRE_VIRTUALENV=false
+RUN pip3 install edge-tts
 
 WORKDIR /app
 

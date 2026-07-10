@@ -207,17 +207,9 @@ client.on('voiceStateUpdate', async (oldState, newState) => {
     if (newState.channelId && newState.channelId !== oldState.channelId) {
       persistentChannelId = newState.channelId;
       persistentAdapterCreator = newState.guild.voiceAdapterCreator;
-      const oldConn = getVoiceConnection(newState.guild.id);
-      joinVoiceChannel({
-        channelId: newState.channelId,
-        guildId: newState.guild.id,
-        adapterCreator: newState.guild.voiceAdapterCreator,
-        selfDeaf: false,
-      });
-      if (oldConn) oldConn.destroy();
       return;
     }
-    if (!newState.channelId && !forceLeave) {
+    if (!newState.channelId && !forceLeave && persistentChannelId) {
       wasKicked = true;
     }
     return;

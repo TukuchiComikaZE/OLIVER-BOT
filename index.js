@@ -179,7 +179,7 @@ client.on('messageCreate', async (message) => {
       return message.reply({ embeds: [errEmbed] });
     }
 
-    const text = message.content.replace(/^\/(?:niyey|say)\s+/i, '').split('\n')[0].trim();
+    const text = message.content.replace(/^\/(?:niyey|say)\s+/i, '').trim();
     await playTTS(connection, text);
     const sayEmbed = new EmbedBuilder()
       .setColor(0x57f287)

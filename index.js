@@ -204,7 +204,11 @@ client.on('messageCreate', async (message) => {
 
 client.on('voiceStateUpdate', async (oldState, newState) => {
   if (newState.member.id === client.user.id) {
-    if (oldState.channelId === persistentChannelId && !newState.channelId && !forceLeave) {
+    if (newState.channelId && newState.channelId !== oldState.channelId) {
+      persistentChannelId = newState.channelId;
+      return;
+    }
+    if (!newState.channelId && !forceLeave) {
       wasKicked = true;
     }
     return;

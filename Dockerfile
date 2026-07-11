@@ -1,4 +1,4 @@
-FROM node:20-bullseye-slim
+FROM node:20-bookworm-slim
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
   ffmpeg \
@@ -8,7 +8,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
   && rm -rf /var/lib/apt/lists/*
 
 ENV PIP_REQUIRE_VIRTUALENV=false
-RUN pip3 install edge-tts yt-dlp
+RUN pip3 install --break-system-packages --upgrade edge-tts yt-dlp
 
 WORKDIR /app
 

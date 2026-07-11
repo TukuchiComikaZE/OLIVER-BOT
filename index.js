@@ -15,6 +15,7 @@ function ytdlpStream(url) {
       '-o', '-',
       '--no-playlist',
       '--no-warnings',
+      '--extractor-args', 'youtube:player_client=web_creator',
       url
     ]);
     const ffmpeg = spawn('ffmpeg', [

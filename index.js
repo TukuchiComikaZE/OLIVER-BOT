@@ -45,9 +45,11 @@ function ytdlpStream(url) {
       '-i', 'pipe:0',
       '-analyzeduration', '0',
       '-loglevel', '0',
-      '-f', 'opus',
+      '-f', 'ogg',
+      '-c:a', 'libopus',
       '-ar', '48000',
       '-ac', '2',
+      '-b:a', '128k',
       'pipe:1'
     ]);
     let stderr = '';

@@ -239,6 +239,18 @@ client.on('voiceStateUpdate', async (oldState, newState) => {
     return;
   }
 
+  if (newState.channelId && newState.selfDeaf && !oldState.selfDeaf) {
+    const afkChannel = newState.guild.afkChannel;
+    if (afkChannel && newState.channelId !== afkChannel.id) {
+      try {
+        await newState.member.voice.setChannel(afkChannel);
+        console.log(`Moved ${newState.member.displayName} to AFK (self-deafened)`);
+      } catch (err) {
+        console.error('Failed to move to AFK:', err.message);
+      }
+    }
+  }
+
   if (!persistentChannelId) return;
 
   const joinedBotChannel = newState.channelId === persistentChannelId && oldState.channelId !== persistentChannelId;

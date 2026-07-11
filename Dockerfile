@@ -8,7 +8,8 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
   && rm -rf /var/lib/apt/lists/*
 
 ENV PIP_REQUIRE_VIRTUALENV=false
-RUN pip3 install --break-system-packages --upgrade edge-tts yt-dlp
+ENV PIP_BREAK_SYSTEM_PACKAGES=1
+RUN pip3 install --upgrade edge-tts yt-dlp
 
 WORKDIR /app
 

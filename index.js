@@ -8,7 +8,7 @@ const { StreamType } = require('@discordjs/voice');
 
 function ytdlpExec(args) {
   return new Promise((resolve, reject) => {
-    const proc = spawn('yt-dlp', [...args, '--no-warnings', '--extractor-args', 'youtube:player_client=mweb']);
+    const proc = spawn('yt-dlp', [...args, '--no-warnings']);
     let stdout = '', stderr = '';
     proc.stdout.on('data', (d) => { stdout += d.toString(); });
     proc.stderr.on('data', (d) => { stderr += d.toString(); });
@@ -39,7 +39,6 @@ function ytdlpStream(url) {
       '-o', '-',
       '--no-playlist',
       '--no-warnings',
-      '--extractor-args', 'youtube:player_client=mweb',
       url
     ]);
     const ffmpeg = spawn('ffmpeg', [

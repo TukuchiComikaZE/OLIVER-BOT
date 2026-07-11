@@ -2,10 +2,9 @@ require('dotenv').config();
 const { Client, GatewayIntentBits, EmbedBuilder } = require('discord.js');
 const { joinVoiceChannel, getVoiceConnection, createAudioPlayer, createAudioResource, AudioPlayerStatus, VoiceConnectionStatus, entersState } = require('@discordjs/voice');
 const { getKhmerTTS } = require('./tts');
-const play = require('play-dl');
+const ytdl = require('@distube/ytdl-core');
 const { spotify } = require('spotify-url-info');
-
-play.setToken({ youtube: { cookie: true } });
+const play = require('play-dl');
 
 const client = new Client({
   intents: [

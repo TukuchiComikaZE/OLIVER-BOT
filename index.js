@@ -424,7 +424,10 @@ client.on('messageCreate', async (message) => {
       .setFooter({ text: 'OLIVER BOT • DEV BY CHI D', iconURL: 'https://i.imgur.com/WInF5AF.png' });
     message.reply({ embeds: [sayEmbed] });
 
-    if (wasPlaying) musicPlayer.unpause();
+    if (wasPlaying) {
+      connection.subscribe(musicPlayer);
+      musicPlayer.unpause();
+    }
   }
 
 
@@ -457,7 +460,10 @@ client.on('voiceStateUpdate', async (oldState, newState) => {
 
   await playTTS(connection, `សួស្តីបង ${newState.member.displayName}`);
 
-  if (wasPlaying) musicPlayer.unpause();
+  if (wasPlaying) {
+    connection.subscribe(musicPlayer);
+    musicPlayer.unpause();
+  }
 });
 
 client.login(process.env.DISCORD_TOKEN).catch(err => {

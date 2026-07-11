@@ -2,71 +2,6 @@ require('dotenv').config();
 const { Client, GatewayIntentBits, EmbedBuilder } = require('discord.js');
 const { joinVoiceChannel, getVoiceConnection, createAudioPlayer, createAudioResource, AudioPlayerStatus, VoiceConnectionStatus, entersState } = require('@discordjs/voice');
 const { getKhmerTTS } = require('./tts');
-const { spotify } = require('spotify-url-info');
-const { spawn } = require('child_process');
-const { StreamType } = require('@discordjs/voice');
-
-function ytdlpExec(args) {
-  return new Promise((resolve, reject) => {
-    const proc = spawn('yt-dlp', [...args, '--no-warnings']);
-    let stdout = '', stderr = '';
-    proc.stdout.on('data', (d) => { stdout += d.toString(); });
-    proc.stderr.on('data', (d) => { stderr += d.toString(); });
-    proc.on('error', reject);
-    proc.on('close', (code) => {
-      if (code !== 0) reject(new Error(stderr || 'yt-dlp failed'));
-      else resolve(stdout.trim());
-    });
-  });
-}
-
-async function ytdlpInfo(url) {
-  const raw = await ytdlpExec(['-j', '--no-playlist', url]);
-  const info = JSON.parse(raw);
-  return { title: info.title, thumbnail: info.thumbnail, url: info.webpage_url };
-}
-
-async function ytdlpSearch(query) {
-  const raw = await ytdlpExec(['ytsearch1:' + query, '-j', '--no-playlist']);
-  const info = JSON.parse(raw);
-  return { title: info.title, thumbnail: info.thumbnail, url: info.webpage_url };
-}
-
-function ytdlpStream(url) {
-  return new Promise((resolve, reject) => {
-    const ytdlp = spawn('yt-dlp', [
-      '-f', 'bestaudio/best',
-      '-o', '-',
-      '--no-playlist',
-      '--no-warnings',
-      url
-    ]);
-    const ffmpeg = spawn('ffmpeg', [
-      '-i', 'pipe:0',
-      '-analyzeduration', '0',
-      '-loglevel', '0',
-      '-f', 'ogg',
-      '-c:a', 'libopus',
-      '-ar', '48000',
-      '-ac', '2',
-      '-b:a', '128k',
-      'pipe:1'
-    ]);
-    let stderr = '';
-    let resolved = false;
-    ytdlp.stderr.on('data', (d) => { stderr += d.toString(); });
-    ytdlp.on('error', (err) => { if (!resolved) reject(err); });
-    ytdlp.on('close', (code) => {
-      if (!resolved && code !== 0) reject(new Error(stderr || 'yt-dlp failed with code ' + code));
-    });
-    ytdlp.stdout.pipe(ffmpeg.stdin);
-    ffmpeg.on('error', (err) => { if (!resolved) reject(err); });
-    ffmpeg.stdout.on('readable', () => {
-      resolved = true;
-      resolve({ stream: ffmpeg.stdout, type: StreamType.OggOpus });
-    });
-  });
-}
 
 const client = new Client({
   intents: [
@@ -85,9 +20,7 @@ client.once('ready', (c) => {
 });
 
 const VOICES = ['sreymom', 'piseth'];
-const musicPlayers = new Map();
 const ttsPlayers = new Map();
-const currentSongTitle = new Map();
 let persistentGuildId = null;
 let persistentChannelId = null;
 let persistentAdapterCreator = null;
@@ -231,9 +164,6 @@ client.on('messageCreate', async (message) => {
         { name: '**`/jenh`**', value: '➜ Leave the voice channel', inline: false },
         { name: '**`/niyey [text]`**', value: '➜ Make the bot speak your text', inline: false },
         { name: '**`/chopniyey`**', value: '➜ Cut the bot\'s current speech', inline: false },
-        { name: '**`/jak [song]`**', value: '➜ Play a song from YouTube/Spotify', inline: false },
-        { name: '**`/bit`**', value: '➜ Stop the current song', inline: false },
-        { name: '**`/lyric`**', value: '➜ Show lyrics of current song', inline: false },
         { name: '**`/cmd`**', value: '➜ Show this command list', inline: false },
         { name: '**🔗 Invite Bot**', value: '[Click here to invite OLIVER BOT](https://discord.com/oauth2/authorize?client_id=1524671957394784330&permissions=8&integration_type=0&scope=bot)', inline: false },
       )
@@ -268,152 +198,6 @@ client.on('messageCreate', async (message) => {
     return message.reply({ embeds: [chopEmbed] });
   }
 
-  if (args[0] === '/lyric') {
-    const title = currentSongTitle.get(message.guild.id);
-    if (!title) {
-      const errEmbed = new EmbedBuilder()
-        .setColor(0xed4245)
-        .setTitle('# ⛔ ERROR')
-        .setDescription('## No song is currently playing.')
-        .setThumbnail('https://i.imgur.com/Yl2kAx0.png')
-        .setImage('https://i.imgur.com/Yl2kAx0.png')
-        .setFooter({ text: 'OLIVER BOT • DEV BY CHI D', iconURL: 'https://i.imgur.com/WInF5AF.png' });
-      return message.reply({ embeds: [errEmbed] });
-    }
-    const songTitle = title;
-    const parts = songTitle.split(' - ');
-    const artist = parts.length > 1 ? parts[1].trim() : '';
-    const songName = parts[0].trim();
-    try {
-      const res = await fetch(`https://api.lyrics.ovh/v1/${encodeURIComponent(artist)}/${encodeURIComponent(songName)}`);
-      const data = await res.json();
-      if (!data.lyrics) throw new Error('No lyrics');
-      const lyricEmbed = new EmbedBuilder()
-        .setColor(0x5865f2)
-        .setTitle('# 📜 LYRICS')
-        .setDescription(`## ${songTitle}\n\`\`\`${data.lyrics.substring(0, 4000)}\`\`\``)
-        .setThumbnail('https://i.imgur.com/Yl2kAx0.png')
-        .setImage('https://i.imgur.com/Yl2kAx0.png')
-        .setFooter({ text: 'OLIVER BOT • DEV BY CHI D', iconURL: 'https://i.imgur.com/WInF5AF.png' });
-      message.reply({ embeds: [lyricEmbed] });
-    } catch {
-      const errEmbed = new EmbedBuilder()
-        .setColor(0xed4245)
-        .setTitle('# ⛔ ERROR')
-        .setDescription('## Could not find lyrics for this song.')
-        .setThumbnail('https://i.imgur.com/Yl2kAx0.png')
-        .setImage('https://i.imgur.com/Yl2kAx0.png')
-        .setFooter({ text: 'OLIVER BOT • DEV BY CHI D', iconURL: 'https://i.imgur.com/WInF5AF.png' });
-      message.reply({ embeds: [errEmbed] });
-    }
-  }
-
-  if (args[0] === '/bit') {
-    const player = musicPlayers.get(message.guild.id);
-    if (player) {
-      player.stop();
-      musicPlayers.delete(message.guild.id);
-      currentSongTitle.delete(message.guild.id);
-    }
-    const stopEmbed = new EmbedBuilder()
-      .setColor(0xed4245)
-      .setTitle('# ⏹️ STOPPED')
-      .setDescription('## Music stopped.')
-      .setThumbnail('https://i.imgur.com/Yl2kAx0.png')
-      .setImage('https://i.imgur.com/Yl2kAx0.png')
-      .setFooter({ text: 'OLIVER BOT • DEV BY CHI D', iconURL: 'https://i.imgur.com/WInF5AF.png' });
-    return message.reply({ embeds: [stopEmbed] });
-  }
-
-  if (args[0] === '/jak') {
-    if (!args[1]) {
-      const errEmbed = new EmbedBuilder()
-        .setColor(0xed4245)
-        .setTitle('# ⛔ ERROR')
-        .setDescription('## Please provide a song name or URL\n>>> **Usage:** `/plaeng [song name or URL]`')
-        .setThumbnail('https://i.imgur.com/Yl2kAx0.png')
-        .setImage('https://i.imgur.com/Yl2kAx0.png')
-        .setFooter({ text: 'OLIVER BOT • DEV BY CHI D', iconURL: 'https://i.imgur.com/WInF5AF.png' });
-      return message.reply({ embeds: [errEmbed] });
-    }
-    const voiceChannel = message.member.voice.channel;
-    if (!voiceChannel) {
-      const errEmbed = new EmbedBuilder()
-        .setColor(0xed4245)
-        .setTitle('# ⛔ ERROR')
-        .setDescription('## You must be in a voice channel!')
-        .setThumbnail('https://i.imgur.com/Yl2kAx0.png')
-        .setImage('https://i.imgur.com/Yl2kAx0.png')
-        .setFooter({ text: 'OLIVER BOT • DEV BY CHI D', iconURL: 'https://i.imgur.com/WInF5AF.png' });
-      return message.reply({ embeds: [errEmbed] });
-    }
-    const query = args.slice(1).join(' ');
-    try {
-      const connection = getVoiceConnection(message.guild.id) || joinVoiceChannel({
-        channelId: voiceChannel.id,
-        guildId: message.guild.id,
-        adapterCreator: message.guild.voiceAdapterCreator,
-        selfDeaf: false,
-      });
-      if (!getVoiceConnection(message.guild.id)) {
-        persistentGuildId = message.guild.id;
-        persistentChannelId = voiceChannel.id;
-        persistentAdapterCreator = message.guild.voiceAdapterCreator;
-        forceLeave = false;
-      }
-
-      let songUrl, songTitle, songThumb;
-      const isSpotify = query.includes('open.spotify.com');
-
-      if (isSpotify) {
-        const data = await spotify.data(query);
-        const found = await ytdlpSearch(`${data.name} ${data.artists?.[0]?.name || ''}`);
-        songUrl = found.url;
-        songTitle = `${data.name} - ${data.artists?.[0]?.name || ''}`;
-        songThumb = data.coverArt?.sources?.[0]?.url || found.thumbnail;
-      } else {
-        const isDirectLink = query.match(/https?:\/\/(www\.)?(youtube\.com|youtu\.be)/);
-        if (isDirectLink) {
-          const info = await ytdlpInfo(query);
-          songUrl = info.url;
-          songTitle = info.title;
-          songThumb = info.thumbnail;
-        } else {
-          const found = await ytdlpSearch(query);
-          songUrl = found.url;
-          songTitle = found.title;
-          songThumb = found.thumbnail;
-        }
-      }
-
-      const audioStream = await ytdlpStream(songUrl);
-      const resource = createAudioResource(audioStream.stream, { inputType: audioStream.type });
-      const player = createAudioPlayer();
-      connection.subscribe(player);
-      player.play(resource);
-      musicPlayers.set(message.guild.id, player);
-      currentSongTitle.set(message.guild.id, songTitle);
-      const playEmbed = new EmbedBuilder()
-        .setColor(0x57f287)
-        .setTitle('# 🎵 NOW PLAYING')
-        .setDescription(`## [${songTitle}](${songUrl})`)
-        .setThumbnail(songThumb || 'https://i.imgur.com/Yl2kAx0.png')
-        .setImage('https://i.imgur.com/Yl2kAx0.png')
-        .setFooter({ text: 'OLIVER BOT • DEV BY CHI D', iconURL: 'https://i.imgur.com/WInF5AF.png' });
-      message.reply({ embeds: [playEmbed] });
-    } catch (err) {
-      console.error('Play error:', err.message);
-      const errEmbed = new EmbedBuilder()
-        .setColor(0xed4245)
-        .setTitle('# ❌ ERROR')
-        .setDescription('## Could not play that song.')
-        .setThumbnail('https://i.imgur.com/Yl2kAx0.png')
-        .setImage('https://i.imgur.com/Yl2kAx0.png')
-        .setFooter({ text: 'OLIVER BOT • DEV BY CHI D', iconURL: 'https://i.imgur.com/WInF5AF.png' });
-      message.reply({ embeds: [errEmbed] });
-    }
-  }
-
   if ((args[0] === '/niyey' || args[0] === '/say') && args[1]) {
     const connection = getVoiceConnection(message.guild.id);
     if (!connection) {
@@ -427,10 +211,6 @@ client.on('messageCreate', async (message) => {
       return message.reply({ embeds: [errEmbed] });
     }
 
-    const musicPlayer = musicPlayers.get(message.guild.id);
-    const wasPlaying = musicPlayer && musicPlayer.state.status === AudioPlayerStatus.Playing;
-    if (wasPlaying) musicPlayer.pause();
-
     const text = message.content.replace(/^\/(?:niyey|say)\s+/i, '').trim();
     await playTTS(connection, text);
     const sayEmbed = new EmbedBuilder()
@@ -441,11 +221,6 @@ client.on('messageCreate', async (message) => {
       .setImage('https://i.imgur.com/Yl2kAx0.png')
       .setFooter({ text: 'OLIVER BOT • DEV BY CHI D', iconURL: 'https://i.imgur.com/WInF5AF.png' });
     message.reply({ embeds: [sayEmbed] });
-
-    if (wasPlaying) {
-      connection.subscribe(musicPlayer);
-      musicPlayer.unpause();
-    }
   }
 
 
@@ -472,16 +247,7 @@ client.on('voiceStateUpdate', async (oldState, newState) => {
   const connection = getVoiceConnection(newState.guild.id);
   if (!connection) return;
 
-  const musicPlayer = musicPlayers.get(newState.guild.id);
-  const wasPlaying = musicPlayer && musicPlayer.state.status === AudioPlayerStatus.Playing;
-  if (wasPlaying) musicPlayer.pause();
-
   await playTTS(connection, `សួស្តីបង ${newState.member.displayName}`);
-
-  if (wasPlaying) {
-    connection.subscribe(musicPlayer);
-    musicPlayer.unpause();
-  }
 });
 
 client.login(process.env.DISCORD_TOKEN).catch(err => {

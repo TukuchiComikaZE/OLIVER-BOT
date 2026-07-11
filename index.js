@@ -270,7 +270,7 @@ client.on('messageCreate', async (message) => {
     }
   }
 
-  if (args[0] === '/bit' || args[0] === '/stop') {
+  if (args[0] === '/bit') {
     const player = musicPlayers.get(message.guild.id);
     if (player) {
       player.stop();
@@ -287,7 +287,7 @@ client.on('messageCreate', async (message) => {
     return message.reply({ embeds: [stopEmbed] });
   }
 
-  if (args[0] === '/jak' || args[0] === '/plaeng') {
+  if (args[0] === '/jak') {
     if (!args[1]) {
       const errEmbed = new EmbedBuilder()
         .setColor(0xed4245)

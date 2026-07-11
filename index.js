@@ -35,7 +35,7 @@ async function ytdlpSearch(query) {
 function ytdlpStream(url) {
   return new Promise((resolve, reject) => {
     const ytdlp = spawn('yt-dlp', [
-      '-f', 'bestaudio',
+      '-f', 'bestaudio/best',
       '-o', '-',
       '--no-playlist',
       '--no-warnings',

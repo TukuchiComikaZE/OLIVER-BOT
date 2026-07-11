@@ -5,6 +5,30 @@ const { getKhmerTTS } = require('./tts');
 const ytdl = require('@distube/ytdl-core');
 const { spotify } = require('spotify-url-info');
 const play = require('play-dl');
+const { spawn } = require('child_process');
+
+function ytdlpStream(url) {
+  return new Promise((resolve, reject) => {
+    const proc = spawn('yt-dlp', [
+      '-f', 'bestaudio',
+      '-o', '-',
+      '--no-playlist',
+      '--no-warnings',
+      url
+    ]);
+    let stderr = '';
+    let resolved = false;
+    proc.stderr.on('data', (d) => { stderr += d.toString(); });
+    proc.on('error', (err) => { if (!resolved) reject(err); });
+    proc.on('close', (code) => {
+      if (!resolved && code !== 0) reject(new Error(stderr || 'yt-dlp failed with code ' + code));
+    });
+    proc.stdout.on('readable', () => {
+      resolved = true;
+      resolve(proc.stdout);
+    });
+  });
+}
 
 const client = new Client({
   intents: [
@@ -344,8 +368,8 @@ client.on('messageCreate', async (message) => {
         }
       }
 
-      const stream = await play.stream(songUrl);
-      const resource = createAudioResource(stream.stream, { inputType: stream.type });
+      const stream = await ytdlpStream(songUrl);
+      const resource = createAudioResource(stream);
       const player = createAudioPlayer();
       connection.subscribe(player);
       player.play(resource);

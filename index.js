@@ -240,11 +240,13 @@ client.on('voiceStateUpdate', async (oldState, newState) => {
   }
 
   if (newState.channelId && newState.selfDeaf && !oldState.selfDeaf) {
+    console.log(`Self-deaf detected: ${newState.member.displayName}`);
     const afkChannel = newState.guild.afkChannel;
+    console.log(`AFK channel: ${afkChannel ? afkChannel.name : 'NOT SET'}`);
     if (afkChannel && newState.channelId !== afkChannel.id) {
       try {
         await newState.member.voice.setChannel(afkChannel);
-        console.log(`Moved ${newState.member.displayName} to AFK (self-deafened)`);
+        console.log(`Moved ${newState.member.displayName} to AFK`);
       } catch (err) {
         console.error('Failed to move to AFK:', err.message);
       }

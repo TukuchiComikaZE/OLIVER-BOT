@@ -2,11 +2,35 @@ require('dotenv').config();
 const { Client, GatewayIntentBits, EmbedBuilder } = require('discord.js');
 const { joinVoiceChannel, getVoiceConnection, createAudioPlayer, createAudioResource, AudioPlayerStatus, VoiceConnectionStatus, entersState } = require('@discordjs/voice');
 const { getKhmerTTS } = require('./tts');
-const ytdl = require('@distube/ytdl-core');
 const { spotify } = require('spotify-url-info');
-const play = require('play-dl');
 const { spawn } = require('child_process');
 const { StreamType } = require('@discordjs/voice');
+
+function ytdlpExec(args) {
+  return new Promise((resolve, reject) => {
+    const proc = spawn('yt-dlp', [...args, '--no-warnings', '--extractor-args', 'youtube:player_client=mweb']);
+    let stdout = '', stderr = '';
+    proc.stdout.on('data', (d) => { stdout += d.toString(); });
+    proc.stderr.on('data', (d) => { stderr += d.toString(); });
+    proc.on('error', reject);
+    proc.on('close', (code) => {
+      if (code !== 0) reject(new Error(stderr || 'yt-dlp failed'));
+      else resolve(stdout.trim());
+    });
+  });
+}
+
+async function ytdlpInfo(url) {
+  const raw = await ytdlpExec(['-j', '--no-playlist', url]);
+  const info = JSON.parse(raw);
+  return { title: info.title, thumbnail: info.thumbnail, url: info.webpage_url };
+}
+
+async function ytdlpSearch(query) {
+  const raw = await ytdlpExec(['ytsearch1:' + query, '-j', '--no-playlist']);
+  const info = JSON.parse(raw);
+  return { title: info.title, thumbnail: info.thumbnail, url: info.webpage_url };
+}
 
 function ytdlpStream(url) {
   return new Promise((resolve, reject) => {
@@ -342,42 +366,22 @@ client.on('messageCreate', async (message) => {
 
       if (isSpotify) {
         const data = await spotify.data(query);
-        const search = await play.search(`${data.name} ${data.artists?.[0]?.name || ''}`, { limit: 1 });
-        if (!search.length) {
-          const errEmbed = new EmbedBuilder()
-            .setColor(0xed4245)
-            .setTitle('# ⛔ ERROR')
-            .setDescription('## Could not find that song on YouTube.')
-            .setThumbnail('https://i.imgur.com/Yl2kAx0.png')
-            .setImage('https://i.imgur.com/Yl2kAx0.png')
-            .setFooter({ text: 'OLIVER BOT • DEV BY CHI D', iconURL: 'https://i.imgur.com/WInF5AF.png' });
-          return message.reply({ embeds: [errEmbed] });
-        }
-        songUrl = search[0].url;
+        const found = await ytdlpSearch(`${data.name} ${data.artists?.[0]?.name || ''}`);
+        songUrl = found.url;
         songTitle = `${data.name} - ${data.artists?.[0]?.name || ''}`;
-        songThumb = data.coverArt?.sources?.[0]?.url || search[0].thumbnails?.[0]?.url;
+        songThumb = data.coverArt?.sources?.[0]?.url || found.thumbnail;
       } else {
         const isDirectLink = query.match(/https?:\/\/(www\.)?(youtube\.com|youtu\.be)/);
         if (isDirectLink) {
-          const info = await play.video_info(query);
-          songUrl = query;
-          songTitle = info.video_details.title;
-          songThumb = info.video_details.thumbnails[0]?.url;
+          const info = await ytdlpInfo(query);
+          songUrl = info.url;
+          songTitle = info.title;
+          songThumb = info.thumbnail;
         } else {
-          const search = await play.search(query, { limit: 1 });
-          if (!search.length) {
-            const errEmbed = new EmbedBuilder()
-              .setColor(0xed4245)
-              .setTitle('# ⛔ ERROR')
-              .setDescription('## No results found!')
-              .setThumbnail('https://i.imgur.com/Yl2kAx0.png')
-              .setImage('https://i.imgur.com/Yl2kAx0.png')
-              .setFooter({ text: 'OLIVER BOT • DEV BY CHI D', iconURL: 'https://i.imgur.com/WInF5AF.png' });
-            return message.reply({ embeds: [errEmbed] });
-          }
-          songUrl = search[0].url;
-          songTitle = search[0].title;
-          songThumb = search[0].thumbnails[0]?.url;
+          const found = await ytdlpSearch(query);
+          songUrl = found.url;
+          songTitle = found.title;
+          songThumb = found.thumbnail;
         }
       }
 

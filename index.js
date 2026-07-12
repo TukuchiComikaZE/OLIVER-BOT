@@ -106,7 +106,7 @@ client.on('messageCreate', async (message) => {
       const joinEmbed = new EmbedBuilder()
         .setColor(0x57f287)
         .setTitle('# 🔊 CONNECTED')
-        .setDescription(`## Successfully joined **${voiceChannel.name}**\n>>> Say **/niyey** to make me speak!\n\n🔗 [Invite OLIVER BOT](https://discord.com/oauth2/authorize?client_id=1524671957394784330&permissions=8&integration_type=0&scope=bot)`) 
+        .setDescription(`## Successfully joined **${voiceChannel.name}**\n>>> Say **/niyey** to make me speak!`) 
         .setThumbnail('https://i.imgur.com/Yl2kAx0.png')
         .setImage('https://i.imgur.com/Yl2kAx0.png')
         .setFooter({ text: 'OLIVER BOT • DEV BY CHI D', iconURL: 'https://i.imgur.com/WInF5AF.png' });
@@ -165,7 +165,6 @@ client.on('messageCreate', async (message) => {
         { name: '**`/niyey [text]`**', value: '➜ Make the bot speak your text', inline: false },
         { name: '**`/chopniyey`**', value: '➜ Cut the bot\'s current speech', inline: false },
         { name: '**`/cmd`**', value: '➜ Show this command list', inline: false },
-        { name: '**🔗 Invite Bot**', value: '[Click here to invite OLIVER BOT](https://discord.com/oauth2/authorize?client_id=1524671957394784330&permissions=8&integration_type=0&scope=bot)', inline: false },
         { name: '**🌐 Website**', value: '[Visit CHI D Website](https://chid444.netlify.app/)', inline: false },
       )
       .setFooter({ text: 'OLIVER BOT • DEV BY CHI D', iconURL: 'https://i.imgur.com/WInF5AF.png' });
@@ -217,7 +216,7 @@ client.on('messageCreate', async (message) => {
     const sayEmbed = new EmbedBuilder()
       .setColor(0x57f287)
       .setTitle('# 🗣️ SPEAKING')
-      .setDescription(`## ${text}\n\n🔗 [Invite OLIVER BOT](https://discord.com/oauth2/authorize?client_id=1524671957394784330&permissions=8&integration_type=0&scope=bot)`) 
+      .setDescription(`## ${text}`)
       .setThumbnail('https://i.imgur.com/Yl2kAx0.png')
       .setImage('https://i.imgur.com/Yl2kAx0.png')
       .setFooter({ text: 'OLIVER BOT • DEV BY CHI D', iconURL: 'https://i.imgur.com/WInF5AF.png' });

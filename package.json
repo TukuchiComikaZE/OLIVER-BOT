@@ -13,6 +13,8 @@
   "type": "commonjs",
   "dependencies": {
     "@discordjs/voice": "^0.19.2",
+    "@google-cloud/text-to-speech": "^6.4.1",
+    "@google/generative-ai": "^0.24.1",
     "discord.js": "^14.26.4",
     "dotenv": "^17.4.2",
     "tweetnacl": "^1.0.3"

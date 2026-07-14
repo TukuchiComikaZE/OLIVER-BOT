@@ -2,6 +2,7 @@ require('dotenv').config();
 const { Client, GatewayIntentBits, EmbedBuilder } = require('discord.js');
 const { joinVoiceChannel, getVoiceConnection, createAudioPlayer, createAudioResource, AudioPlayerStatus, VoiceConnectionStatus, entersState } = require('@discordjs/voice');
 const { getKhmerTTS } = require('./tts');
+const { askGemini, getRemaining, DAILY_LIMIT } = require('./ai');
 
 const client = new Client({
   intents: [
@@ -162,6 +163,8 @@ client.on('messageCreate', async (message) => {
       .addFields(
         { name: '**`/jol`**', value: '➜ Join your current voice channel', inline: false },
         { name: '**`/jenh`**', value: '➜ Leave the voice channel', inline: false },
+        { name: '**`/ai [question]`**', value: '➜ Ask AI anything, replies in text + voice', inline: false },
+        { name: '**`/usage`**', value: '➜ Check AI remaining daily usage', inline: false },
         { name: '**`/niyey [text]`**', value: '➜ Make the bot speak your text', inline: false },
         { name: '**`/chopniyey`**', value: '➜ Cut the bot\'s current speech', inline: false },
         { name: '**`/cmd`**', value: '➜ Show this command list', inline: false },
@@ -196,6 +199,66 @@ client.on('messageCreate', async (message) => {
       .setImage('https://i.imgur.com/Yl2kAx0.png')
       .setFooter({ text: 'OLIVER BOT • DEV BY CHI D', iconURL: 'https://i.imgur.com/WInF5AF.png' });
     return message.reply({ embeds: [chopEmbed] });
+  }
+
+  if (args[0] === '/usage' || args[0] === '/status') {
+    const remaining = getRemaining();
+    const usageEmbed = new EmbedBuilder()
+      .setColor(0x5865f2)
+      .setTitle('# 📊 AI USAGE')
+      .setDescription(`## ${remaining}/${DAILY_LIMIT} requests remaining today`)
+      .setThumbnail('https://i.imgur.com/Yl2kAx0.png')
+      .setImage('https://i.imgur.com/Yl2kAx0.png')
+      .setFooter({ text: 'OLIVER BOT • DEV BY CHI D', iconURL: 'https://i.imgur.com/WInF5AF.png' });
+    return message.reply({ embeds: [usageEmbed] });
+  }
+
+  if (args[0] === '/ai' && args[1]) {
+    const connection = getVoiceConnection(message.guild.id);
+    if (!connection) {
+      const errEmbed = new EmbedBuilder()
+        .setColor(0xed4245)
+        .setTitle('# ⛔ ERROR')
+        .setDescription('## Bot is not connected\n>>> Use **/jol** to make me join first.')
+        .setThumbnail('https://i.imgur.com/Yl2kAx0.png')
+        .setImage('https://i.imgur.com/Yl2kAx0.png')
+        .setFooter({ text: 'OLIVER BOT • DEV BY CHI D', iconURL: 'https://i.imgur.com/WInF5AF.png' });
+      return message.reply({ embeds: [errEmbed] });
+    }
+
+    const question = message.content.replace(/^\/ai\s+/i, '').trim();
+    const thinkingEmbed = new EmbedBuilder()
+      .setColor(0x5865f2)
+      .setTitle('# 🤔 THINKING')
+      .setDescription('## Please wait...')
+      .setThumbnail('https://i.imgur.com/Yl2kAx0.png')
+      .setImage('https://i.imgur.com/Yl2kAx0.png')
+      .setFooter({ text: 'OLIVER BOT • DEV BY CHI D', iconURL: 'https://i.imgur.com/WInF5AF.png' });
+    const waitMsg = await message.reply({ embeds: [thinkingEmbed] });
+
+    try {
+      const answer = await askGemini(question);
+      const remaining = getRemaining();
+      const replyEmbed = new EmbedBuilder()
+        .setColor(0x57f287)
+        .setTitle('# 💬 AI RESPONSE')
+        .setDescription(`## ${answer}\n>>> **AI Used:** ${DAILY_LIMIT - remaining}/${DAILY_LIMIT} today | **Remaining:** ${remaining}`)
+        .setThumbnail('https://i.imgur.com/Yl2kAx0.png')
+        .setImage('https://i.imgur.com/Yl2kAx0.png')
+        .setFooter({ text: 'OLIVER BOT • DEV BY CHI D', iconURL: 'https://i.imgur.com/WInF5AF.png' });
+      await waitMsg.edit({ embeds: [replyEmbed] });
+      await playTTS(connection, answer);
+    } catch (err) {
+      console.error('AI error:', err.message);
+      const errEmbed = new EmbedBuilder()
+        .setColor(0xed4245)
+        .setTitle('# ❌ AI ERROR')
+        .setDescription(`## ${err.message}`)
+        .setThumbnail('https://i.imgur.com/Yl2kAx0.png')
+        .setImage('https://i.imgur.com/Yl2kAx0.png')
+        .setFooter({ text: 'OLIVER BOT • DEV BY CHI D', iconURL: 'https://i.imgur.com/WInF5AF.png' });
+      await waitMsg.edit({ embeds: [errEmbed] });
+    }
   }
 
   if ((args[0] === '/niyey' || args[0] === '/say') && args[1]) {

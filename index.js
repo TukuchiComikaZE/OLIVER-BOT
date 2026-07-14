@@ -250,14 +250,18 @@ client.on('messageCreate', async (message) => {
       await playTTS(connection, answer);
     } catch (err) {
       console.error('AI error:', err.message);
+      const isQuotaError = err.message.includes('អស់សំណួរ');
       const errEmbed = new EmbedBuilder()
         .setColor(0xed4245)
         .setTitle('# ❌ AI ERROR')
-        .setDescription(`## ${err.message}`)
+        .setDescription(`## ${isQuotaError ? '​ឈប់សួរហើយបង​​​​​​ហត់​ណាស់​​ចាំ​ស្អែក​ទៅ​​​សុំ​​វ​​​​' : err.message}`)
         .setThumbnail('https://i.imgur.com/Yl2kAx0.png')
         .setImage('https://i.imgur.com/Yl2kAx0.png')
         .setFooter({ text: 'OLIVER BOT • DEV BY CHI D', iconURL: 'https://i.imgur.com/WInF5AF.png' });
       await waitMsg.edit({ embeds: [errEmbed] });
+      if (isQuotaError) {
+        await playTTS(connection, '​ឈប់​សួរ​ហើយ​បង​​ ហត់​ណាស់​​ ចាំ​ស្អែក​ទៅ​​ សុំ​​វ​​​');
+      }
     }
   }
 

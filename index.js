@@ -254,13 +254,13 @@ client.on('messageCreate', async (message) => {
       const errEmbed = new EmbedBuilder()
         .setColor(0xed4245)
         .setTitle('# ❌ AI ERROR')
-        .setDescription(`## ${isQuotaError ? '​ឈប់សួរហើយបង​​​​​​ហត់​ណាស់​​ចាំ​ស្អែក​ទៅ​​​សុំ​​វ​​​​' : err.message}`)
+        .setDescription(`## ${isQuotaError ? '​ឈប់សួរទៅបង​​​​​ហត់​ណាស់​​ចាំ​ស្អែក​ទៅ​​​សុំ​​វវវវវវ​​​​' : err.message}`)
         .setThumbnail('https://i.imgur.com/Yl2kAx0.png')
         .setImage('https://i.imgur.com/Yl2kAx0.png')
         .setFooter({ text: 'OLIVER BOT • DEV BY CHI D', iconURL: 'https://i.imgur.com/WInF5AF.png' });
       await waitMsg.edit({ embeds: [errEmbed] });
       if (isQuotaError) {
-        await playTTS(connection, '​ឈប់​សួរ​ហើយ​បង​​ ហត់​ណាស់​​ ចាំ​ស្អែក​ទៅ​​ សុំ​​វ​​​');
+        await playTTS(connection, 'ឈប់សួរទៅបង ហត់ណាស់ ចាំស្អែកទៅ សុំវវវវវវ');
       }
     }
   }

@@ -29,24 +29,31 @@ function saveUsage(count) {
 
 async function askGemini(prompt) {
   const apiKey = process.env.GEMINI_API_KEY;
-  if (!apiKey) throw new Error('GEMINI_API_KEY not set in .env');
+  if (!apiKey) throw new Error('API key not set. Please set GEMINI_API_KEY.');
 
   const used = getUsage();
   if (used >= DAILY_LIMIT) {
-    throw new Error(`Daily AI limit reached (${DAILY_LIMIT}/${DAILY_LIMIT}). Resets tomorrow.`);
+    throw new Error('អស់សំណួរហើយសម្រាប់ថ្ងៃនេះ សូមត្រឡប់មកវិញនៅថ្ងៃស្អែក');
   }
 
   const genAI = new GoogleGenerativeAI(apiKey);
   const model = genAI.getGenerativeModel({ model: 'gemini-2.0-flash' });
 
-  const result = await model.generateContent({
-    contents: [{ role: 'user', parts: [{ text: prompt }] }],
-    systemInstruction: { parts: [{ text: SYSTEM_PROMPT }] },
-  });
+  try {
+    const result = await model.generateContent({
+      contents: [{ role: 'user', parts: [{ text: prompt }] }],
+      systemInstruction: { parts: [{ text: SYSTEM_PROMPT }] },
+    });
 
-  const response = result.response;
-  saveUsage(used + 1);
-  return response.text();
+    const response = result.response;
+    saveUsage(used + 1);
+    return response.text();
+  } catch (err) {
+    if (err.message && err.message.includes('429')) {
+      throw new Error('អស់សំណួរហើយសម្រាប់ថ្ងៃនេះ សូមត្រឡប់មកវិញនៅថ្ងៃស្អែក');
+    }
+    throw err;
+  }
 }
 
 function getRemaining() {

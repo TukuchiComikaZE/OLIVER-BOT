@@ -250,7 +250,7 @@ client.on('messageCreate', async (message) => {
       await playTTS(connection, answer);
     } catch (err) {
       console.error('AI error:', err.message);
-      const isQuotaError = err.message.includes('អស់សំណួរ');
+      const isQuotaError = err.message.includes('សំណួរ') || err.message.includes('429');
       const errEmbed = new EmbedBuilder()
         .setColor(0xed4245)
         .setTitle('# ❌ AI ERROR')

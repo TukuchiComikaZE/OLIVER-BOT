@@ -9,8 +9,16 @@ const KHMER_VOICES = {
   piseth: 'km-KH-PisethNeural',
 };
 
-async function getKhmerTTS(text, voiceKey = 'sreymom') {
-  const voice = KHMER_VOICES[voiceKey] || KHMER_VOICES.sreymom;
+const THAI_VOICES = {
+  premwadee: 'th-TH-PremwadeeNeural',
+  niwat: 'th-TH-NiwatNeural',
+};
+
+const VOICE_POOLS = { km: KHMER_VOICES, th: THAI_VOICES };
+
+async function getKhmerTTS(text, voiceKey = 'sreymom', lang = 'km') {
+  const pool = VOICE_POOLS[lang] || KHMER_VOICES;
+  const voice = pool[voiceKey] || KHMER_VOICES[voiceKey] || KHMER_VOICES.sreymom;
   const tmpFile = path.join(os.tmpdir(), `tts_${Date.now()}.mp3`);
 
   return new Promise((resolve, reject) => {
@@ -36,4 +44,4 @@ async function getKhmerTTS(text, voiceKey = 'sreymom') {
   });
 }
 
-module.exports = { getKhmerTTS, KHMER_VOICES };
+module.exports = { getKhmerTTS, KHMER_VOICES, THAI_VOICES };

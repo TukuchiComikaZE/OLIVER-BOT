@@ -19,7 +19,7 @@ client.once('ready', (c) => {
   setupKeepAlive();
 });
 
-const VOICES = { km: ['sreymom', 'piseth'], th: ['premwadee', 'niwat'] };
+const VOICES = ['sreymom', 'piseth'];
 const ttsPlayers = new Map();
 let persistentGuildId = null;
 let persistentChannelId = null;
@@ -43,12 +43,11 @@ function setupKeepAlive() {
   }, 30000);
 }
 
-async function playTTS(connection, text, lang = 'km') {
-  const voiceKeys = VOICES[lang] || VOICES.km;
-  const voice = voiceKeys[Math.floor(Math.random() * voiceKeys.length)];
+async function playTTS(connection, text) {
+  const voice = VOICES[Math.floor(Math.random() * VOICES.length)];
   try {
-    console.log(`Generating TTS [${lang}]: "${text.substring(0, 30)}..."`);
-    const stream = await getKhmerTTS(text, voice, lang);
+    console.log(`Generating TTS: "${text.substring(0, 30)}..."`);
+    const stream = await getKhmerTTS(text, voice);
     console.log('TTS audio received, playing...');
 
     const player = createAudioPlayer();
@@ -164,8 +163,7 @@ client.on('messageCreate', async (message) => {
       .addFields(
         { name: '**`/jol`**', value: '➜ Join your current voice channel', inline: false },
         { name: '**`/jenh`**', value: '➜ Leave the voice channel', inline: false },
-        { name: '**`/niyey [text]`**', value: '➜ Make the bot speak your text (Khmer 🇰🇭)', inline: false },
-        { name: '**`/niyey t [text]`**', value: '➜ Make the bot speak Thai 🇹🇭 (example: /niyey t สวัสดีครับ)', inline: false },
+        { name: '**`/niyey [text]`**', value: '➜ Make the bot speak your text', inline: false },
         { name: '**`/chopniyey`**', value: '➜ Cut the bot\'s current speech', inline: false },
         { name: '**`/cmd`**', value: '➜ Show this command list', inline: false },
         { name: '**🌐 Website**', value: '[Visit CHI D Website](https://chid444.netlify.app/)', inline: false },
@@ -218,35 +216,20 @@ client.on('messageCreate', async (message) => {
     }
 
     const raw = message.content.replace(/^\/(?:niyey|say)\s+/i, '').trim();
-
-    // Thai speech: /niyey t <word> (also accepts: th, thai)
-    const thaiMatch = raw.match(/^(?:t|th|thai)\s+([\s\S]+)/i);
-    let lang = 'km';
-    let text = raw;
-    if (thaiMatch) {
-      lang = 'th';
-      text = thaiMatch[1].trim();
-    }
-
-    // Auto-guard language mix: neural voices fail ("no audio") when given
-    // a script they cannot pronounce, so align the voice with the text.
-    const hasThai = /[\u0E00-\u0E7F]/.test(text);
-    const hasKhmer = /[\u1780-\u17A2]/.test(text);
-    if (lang === 'km' && hasThai) lang = 'th';
-    else if (lang === 'th' && !hasThai && hasKhmer) lang = 'km';
+    const text = raw;
 
     if (!text) {
       const errEmbed = new EmbedBuilder()
         .setColor(0xed4245)
         .setTitle('# ⛔ ERROR')
-        .setDescription('## No text provided\n>>> Example: **/niyey t สวัสดีครับ**')
+        .setDescription('## No text provided\n>>> Example: **/niyey សួស្តី**')
         .setThumbnail('https://i.imgur.com/Yl2kAx0.png')
         .setImage('https://i.imgur.com/Yl2kAx0.png')
         .setFooter({ text: 'OLIVER BOT • DEV BY CHI D', iconURL: 'https://i.imgur.com/WInF5AF.png' });
       return message.reply({ embeds: [errEmbed] });
     }
 
-    const ok = await playTTS(connection, text, lang);
+    const ok = await playTTS(connection, text);
     if (ok === false) {
       const failEmbed = new EmbedBuilder()
         .setColor(0xed4245)
@@ -257,10 +240,9 @@ client.on('messageCreate', async (message) => {
         .setFooter({ text: 'OLIVER BOT • DEV BY CHI D', iconURL: 'https://i.imgur.com/WInF5AF.png' });
       return message.reply({ embeds: [failEmbed] });
     }
-    const flag = lang === 'th' ? '🇹🇭' : '🇰🇭';
     const sayEmbed = new EmbedBuilder()
       .setColor(0x57f287)
-      .setTitle(`# ${flag} SPEAKING`)
+      .setTitle('# 🗣️ SPEAKING')
       .setDescription(`## ${text}`)
       .setThumbnail('https://i.imgur.com/Yl2kAx0.png')
       .setImage('https://i.imgur.com/Yl2kAx0.png')

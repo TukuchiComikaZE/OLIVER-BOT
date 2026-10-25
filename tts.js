@@ -9,12 +9,7 @@ const KHMER_VOICES = {
   piseth: 'km-KH-PisethNeural',
 };
 
-const THAI_VOICES = {
-  premwadee: 'th-TH-PremwadeeNeural',
-  niwat: 'th-TH-NiwatNeural',
-};
-
-const VOICE_POOLS = { km: KHMER_VOICES, th: THAI_VOICES };
+const VOICE_POOLS = { km: KHMER_VOICES };
 
 // Serialize all TTS jobs through a queue (gentle on Microsoft's service,
 // and prevents overlapping greetings/mandates from spawning parallel
@@ -85,4 +80,4 @@ function synthesizeOnce(text, voiceKey, lang) {
   });
 }
 
-module.exports = { getKhmerTTS, KHMER_VOICES, THAI_VOICES };
+module.exports = { getKhmerTTS, KHMER_VOICES };

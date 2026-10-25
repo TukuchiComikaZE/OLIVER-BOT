@@ -228,6 +228,13 @@ client.on('messageCreate', async (message) => {
       text = thaiMatch[1].trim();
     }
 
+    // Auto-guard language mix: neural voices fail ("no audio") when given
+    // a script they cannot pronounce, so align the voice with the text.
+    const hasThai = /[\u0E00-\u0E7F]/.test(text);
+    const hasKhmer = /[\u1780-\u17A2]/.test(text);
+    if (lang === 'km' && hasThai) lang = 'th';
+    else if (lang === 'th' && !hasThai && hasKhmer) lang = 'km';
+
     if (!text) {
       const errEmbed = new EmbedBuilder()
         .setColor(0xed4245)
